@@ -1,0 +1,179 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Hitch a hike</title><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"><script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#f6f7f4;--cd:#fff;--tx:#1d2a22;--mu:#66756b;--ac:#1f8a5b;--a2:#e6f4ec;--bd:#dde4df;--wa:#c0392b;--rd:#bfc9c2;--wt:#dbeaf2;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#131916;--cd:#1c2520;--tx:#e8eee9;--mu:#93a398;--ac:#3cc088;--a2:#1f3329;--bd:#2b3830;--rd:#3a4741;--wt:#1b2a33;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#131916;--cd:#1c2520;--tx:#e8eee9;--mu:#93a398;--ac:#3cc088;--a2:#1f3329;--bd:#2b3830;--rd:#3a4741;--wt:#1b2a33;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bd);background:var(--cd)}
+h1{font-size:18px;margin:0;color:var(--ac)}h2{font-size:15px;margin:0 0 6px}
+nav{display:flex;gap:4px;padding:8px 10px;overflow-x:auto}nav button{flex:1;white-space:nowrap}
+main{max-width:980px;margin:0 auto;padding:0 10px 30px;display:grid;gap:10px;grid-template-columns:1fr}
+@media(min-width:800px){main.two{grid-template-columns:1.5fr 1fr}}
+.c{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:12px}
+button,select,input{font:inherit;color:var(--tx);background:var(--cd);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+button{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.w{background:var(--wa);color:#fff;border-color:var(--wa)}button.on{background:var(--a2);border-color:var(--ac)}
+input,select{width:100%;margin:3px 0 8px}label{font-size:12px;color:var(--mu)}
+.mu{color:var(--mu);font-size:13px}.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.row>*{flex:0 0 auto}
+.card{border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin:6px 0}.tag{background:var(--a2);border-radius:99px;padding:1px 8px;font-size:12px}
+svg{width:100%;height:auto;display:block;border-radius:10px;background:var(--wt)}
+main.full{max-width:none;padding:0;display:block}
+.gm{position:relative;height:calc(100dvh - 100px);min-height:440px;overflow:hidden}
+.mslot,.fb{position:absolute;inset:0}.mslot{isolation:isolate}.car{font-size:18px;text-align:center;line-height:26px;background:var(--cd);border-radius:50%;border:2px solid var(--ac)}.fb{overflow:auto;padding:8px;background:var(--wt)}
+.panel{position:absolute;z-index:1000;left:10px;top:10px;width:370px;max-height:calc(100% - 20px);overflow:auto;background:var(--cd);border-radius:16px;padding:10px;box-shadow:0 2px 14px rgba(0,0,0,.28)}
+@media(max-width:700px){.panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:46%}}
+.pill{display:flex;align-items:center;gap:6px;border:1px solid var(--bd);border-radius:99px;padding:2px 12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.15)}.pill select{border:0;margin:0;background:transparent}
+.chips select{border-radius:99px;margin:0 0 6px;padding:5px 10px;font-size:13px}
+#toast{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:8px 14px;border-radius:99px;display:none;z-index:9}
+</style></head><body>
+<header><h1>🚗 Hitch a hike</h1><div class="row"><span class="mu" id="who"></span><button id="out" style="display:none">Log out</button><button id="sos" class="w" title="Emergency">SOS</button></div></header>
+<nav id="nav"></nav><main id="app"></main><div id="toast"></div>
+<script>
+const N={RO:["Rolleston",-43.5918,172.383],LI:["Lincoln",-43.6403,172.4829],PR:["Prebbleton",-43.585,172.5083],TE:["Templeton",-43.5547,172.4767],HO:["Hornby",-43.5333,172.5333],AP:["Airport",-43.4894,172.5322],WI:["Wigram",-43.553,172.556],HA:["Halswell",-43.59,172.56],AD:["Addington",-43.541,172.615],CB:["Christchurch Centre",-43.5321,172.6362]};
+const E=[["RO","TE"],["TE","HO"],["HO","WI"],["WI","AD"],["AD","CB"],["RO","LI"],["LI","PR"],["PR","HA"],["HA","AD"],["RO","PR"],["HO","AP"]];
+const adj={};E.forEach(([a,b])=>{(adj[a]=adj[a]||[]).push(b);(adj[b]=adj[b]||[]).push(a)});
+const km=(a,b)=>{const r=x=>x*Math.PI/180,[,la,lo]=N[a],[,lb,ob]=N[b],h=Math.sin(r(lb-la)/2)**2+Math.cos(r(la))*Math.cos(r(lb))*Math.sin(r(ob-lo)/2)**2;return 12742*Math.asin(Math.sqrt(h))*1.25};
+const XY=id=>[(N[id][2]-172.36)/.30*560+20,(-43.47-N[id][1])/.19*360+20];
+function route(a,b){const d={[a]:0},pv={},q=new Set(Object.keys(N));while(q.size){let u=null;q.forEach(k=>{if(d[k]!==undefined&&(u===null||d[k]<d[u]))u=k});if(u===null)break;q.delete(u);if(u===b)break;(adj[u]||[]).forEach(v=>{const t=d[u]+km(u,v);if(d[v]===undefined||t<d[v]){d[v]=t;pv[v]=u}})}const p=[b];while(p[0]!==a&&pv[p[0]])p.unshift(pv[p[0]]);return p[0]===a?p:[a,b]}
+const dist=p=>p.slice(1).reduce((s,k,i)=>s+km(p[i],k),0);
+const SBURL="https://klvzrgxpmhsqptifapxj.supabase.co",SBKEY="sb_publishable_1QOzTDr99Aj0Ik6c2XURJw_2_NNoeQ3";
+const SB=window.supabase?supabase.createClient(SBURL,SBKEY):null;
+const S={offers:{},requests:{},drivers:{},trips:{}};let uid=null,me=null,tab="map",sel=null,sim=null,admin=false,mode="in",P={},busy=false,again=false;
+
+const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const toast=m=>{const t=$("#toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2600)};
+async function loadAll(){
+ if(!uid||!SB)return;if(busy){again=true;return}busy=true;
+ try{
+  const q=t=>SB.from(t).select("*"),[pr,dr,of,rq,tr]=await Promise.all([q("profiles"),q("drivers"),q("offers").order("created_at",{ascending:false}).limit(300),q("requests"),q("trips")]);
+  for(const result of [pr,dr,of,rq,tr])if(result.error)throw result.error;
+  P={};(pr.data||[]).forEach(x=>P[x.id]=x);me=P[uid]||null;admin=!!(me&&me.is_admin);
+  S.drivers={};(dr.data||[]).forEach(d=>{const p=P[d.user_id]||{};S.drivers[d.user_id]={name:p.name,age:p.age,gender:p.gender,vehicle:d.vehicle,plate:d.plate,seats:d.seats,sum:d.rating_sum,n:d.rating_count}});
+  const OM={};S.offers={};(of.data||[]).forEach(o=>{OM[o.id]=o.driver_id;const d=S.drivers[o.driver_id];if(!d||o.status==="done"||S.offers[o.driver_id])return;S.offers[o.driver_id]={id:o.id,uid:o.driver_id,name:d.name,age:d.age,gender:d.gender,vehicle:d.vehicle,plate:d.plate,seats:d.seats,taken:o.taken,path:o.path,idx:o.idx,status:o.status}});
+  S.requests={};(rq.data||[]).forEach(r=>{const p=P[r.rider_id]||{};S.requests[r.id]={id:r.id,offer:OM[r.offer_id],offer_id:r.offer_id,rider:r.rider_id,rname:p.name,rage:p.age,rgender:p.gender,rver:p.id_status==="verified"?"ID verified":p.id_status==="submitted"?"ID submitted":"ID not verified",from:r.from_node,to:r.to_node,status:r.status}});
+  S.trips={};(tr.data||[]).forEach(t=>{const d=S.drivers[t.driver_id]||{},nm=k=>N[k]?N[k][0]:k;S.trips[t.id]={driver:t.driver_id,rider:t.rider_id,dname:(P[t.driver_id]||{}).name,plate:d.plate,rname:(P[t.rider_id]||{}).name,from:nm(t.from_node),to:nm(t.to_node),km:N[t.from_node]&&N[t.to_node]?+dist(route(t.from_node,t.to_node)).toFixed(1):0,ts:Date.parse(t.created_at)}});
+ }catch(e){toast("Could not load data: "+(e.message||e))}
+ busy=false;const f=document.activeElement;if(f&&["INPUT","SELECT"].includes(f.tagName)&&!/^(fd|fg|fa)$/.test(f.id)){if(again){again=false;loadAll()}return}
+ render();if(again){again=false;loadAll()}}
+async function onSession(ses){
+ if(!ses){uid=null;me=null;admin=false;S.offers={};S.requests={};S.drivers={};S.trips={};render();return}
+ uid=ses.user.id;await loadAll();render();
+ if(!window.ch){window.ch=SB.channel("hah").on("postgres_changes",{event:"*",schema:"public"},()=>loadAll()).subscribe();setInterval(loadAll,12000)}}
+async function boot(){if(!SB){toast("Could not load the database library. Check your internet connection.");return render()}
+ const{data}=await SB.auth.getSession();await onSession(data.session);
+ SB.auth.onAuthStateChange((_e,ses)=>{setTimeout(()=>{if(!window.authBusy&&(ses?.user.id||null)!==uid)onSession(ses)},0)})}
+const rating=d=>d&&d.n?(d.sum/d.n).toFixed(1)+"★ ("+d.n+")":"new";
+
+let G=null,gmap=null,objs=[],RC={},mapEl=document.createElement("div");mapEl.style.cssText="height:100%;width:100%";
+const LL=k=>[N[k][1],N[k][2]],pk=o=>o.path.join("-");
+function loadMaps(){if(!window.L)return;gmap=L.map(mapEl).setView([-43.56,172.5],11);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(gmap);G=true;render()}
+
+function slot(o){window.hl=o;return G?'<div class="mslot"></div>':'<div class="fb">'+mapSVG(o)+'<div class="mu">The map could not load. Check your internet connection.</div></div>'}
+const dm=d=>d>=1000?(d/1000).toFixed(1)+" km":Math.round(d)+" m",TT=(m,n)=>{const t=m.type,d=m.modifier||"";return t==="depart"?"Head "+(n?"along "+n:"off"):t==="arrive"?"Arrive at your destination":t==="roundabout"||t==="rotary"?"Take the roundabout"+(n?" onto "+n:""):(d?"Turn "+d:"Continue")+(n?" onto "+n:"")};
+async function fetchRoute(o){const k=pk(o);if(RC[k])return;RC[k]={pending:true};const p=o.path;try{const r=await(await fetch("https://router.project-osrm.org/route/v1/driving/"+p.map(x=>N[x][2]+","+N[x][1]).join(";")+"?overview=full&geometries=geojson&steps=true")).json(),rt=r.routes[0];RC[k]={line:rt.geometry.coordinates.map(c=>[c[1],c[0]]),steps:rt.legs.flatMap(l=>l.steps.map(x=>({t:TT(x.maneuver,x.name),d:dm(x.distance)})))}}catch(e){RC[k]={line:p.map(LL),steps:null};toast("Routing unavailable — showing straight lines")}render()}
+function drawMap(h){objs.forEach(x=>x.remove());objs=[];const cols=["#1f8a5b","#d4770b","#7b4ed8","#c2396b"];Object.values(S.offers).filter(o=>o.status!=="done").forEach((o,i)=>{fetchRoute(o);const c=cols[i%4],r=RC[pk(o)],on=h&&h.uid===o.uid;if(r&&r.line)objs.push(L.polyline(r.line,{color:c,weight:on?6:3,opacity:h&&!on?.3:.9}).addTo(gmap));const m=L.marker(LL(o.path[Math.min(o.idx|0,o.path.length-1)]),{icon:L.divIcon({html:"🚗",className:"car",iconSize:[30,30]}),title:o.name}).addTo(gmap);m.on("click",()=>{sel=o.uid;tab==="drive"||(tab="map");render()});objs.push(m)});if(h&&RC[pk(h)]&&RC[pk(h)].line&&window.fitFor!==h.uid){window.fitFor=h.uid;gmap.fitBounds(L.polyline(RC[pk(h)].line).getBounds(),{padding:[30,30]})}}
+
+function nav(){const t=[["map","Map"],["drive","Drive"],["req","Requests"],["trips","Trips"],["safe","Safety & terms"]];$("#nav").innerHTML=t.map(([k,l])=>`<button class="${tab===k?"on":""}" data-t="${k}">${l}${k==="req"?" ("+myReqs().length+")":""}</button>`).join("");$("#nav").onclick=e=>{const k=e.target.dataset.t;if(k){tab=k;sel=null;render()}}}
+const myReqs=()=>Object.entries(S.requests).filter(([,r])=>r.offer===uid&&r.status==="pending"||r.rider===uid&&["pending","accepted"].includes(r.status));
+function mapSVG(hl,pos){let s=`<svg viewBox="0 0 600 400" role="img" aria-label="Schematic map Rolleston to Christchurch">`;E.forEach(([a,b])=>{const[x,y]=XY(a),[u,v]=XY(b);s+=`<line x1="${x}" y1="${y}" x2="${u}" y2="${v}" stroke="var(--rd)" stroke-width="5" stroke-linecap="round"/>`});
+ const cols=["#1f8a5b","#d4770b","#7b4ed8","#c2396b"];Object.values(S.offers).filter(o=>o.status!=="done").forEach((o,i)=>{const c=cols[i%4],pts=o.path.map(k=>XY(k).join(",")).join(" "),h=hl&&hl.uid===o.uid;s+=`<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="${h?6:3}" opacity="${hl&&!h?.3:.9}" stroke-dasharray="${h?"":"6 5"}" stroke-linecap="round"/>`;const[x,y]=XY(o.path[Math.min(o.idx|0,o.path.length-1)]);s+=`<g data-o="${o.uid}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="11" fill="${c}"/><text x="${x}" y="${y+4}" font-size="12" text-anchor="middle">🚗</text></g>`});
+ Object.keys(N).forEach(k=>{const[x,y]=XY(k);s+=`<circle cx="${x}" cy="${y}" r="4" fill="var(--tx)"/><text x="${x+6}" y="${y-6}" font-size="11" fill="var(--tx)">${N[k][0]}</text>`});return s+"</svg>"}
+function fits(o){const f=me||{};return true}
+function mapView(){const offs=Object.values(S.offers).filter(o=>o.status!=="done"&&o.uid!==uid),o=sel&&S.offers[sel],af=window.af||{g:"",a:""},dest=window.dest||"";
+ const list=offs.filter(x=>(!af.g||x.gender===af.g)&&(!af.a||(af.a==="30"?x.age<30:x.age>=30))&&(!dest||x.path.slice(x.idx|0).includes(dest)));
+ return `<div class="gm">${slot(o)}<div class="panel"><div class="pill">📍<select id="fd"><option value="">Where to? (any destination)</option>${Object.keys(N).map(k=>`<option value="${k}" ${dest===k?"selected":""}>${N[k][0]}</option>`).join("")}</select></div><div class="row chips"><select id="fg"><option value="">Any gender</option><option ${af.g==="Female"?"selected":""}>Female</option><option ${af.g==="Male"?"selected":""}>Male</option><option ${af.g==="Other"?"selected":""}>Other</option></select><select id="fa"><option value="">Any age</option><option value="30" ${af.a==="30"?"selected":""}>Under 30</option><option value="99" ${af.a==="99"?"selected":""}>30+</option></select></div>${list.length?list.map(x=>`<div class="card" data-o="${x.uid}" style="cursor:pointer"><b>${esc(x.name)}</b> <span class="tag">${rating(S.drivers[x.uid])}</span><div class="mu">${esc(x.gender)}, ${esc(x.age)} · ${esc(x.vehicle)} · ${esc(x.plate)}</div><div>${N[x.path[0]][0]} → ${N[x.path.at(-1)][0]} · ${x.seats-x.taken}/${x.seats} seats free</div></div>`).join(""):'<div class="mu">No drivers match right now.</div>'}${o&&o.uid!==uid?reqForm(o):""}</div></div>`}
+function reqForm(o){const rest=o.path.slice(o.idx|0);const opt=(a,sk)=>rest.filter((k,i)=>sk?i>0:true).map(k=>`<option value="${k}">${N[k][0]}</option>`).join("");
+ const r=Object.values(S.requests).find(x=>x.rider===uid&&x.offer===o.uid&&["pending","accepted"].includes(x.status));
+ return `<div class="c"><h2>Ask ${esc(o.name)} for a lift</h2>`+(r?`<div class="tag">Request ${r.status}</div>`:o.taken>=o.seats?'<div class="mu">Car is full.</div>':`<label>Pick-up</label><select id="pf">${opt(0,0)}</select><label>Drop-off (you can leave halfway)</label><select id="pt">${rest.slice(1).map(k=>`<option value="${k}">${N[k][0]}</option>`).join("")}</select><button class="p" id="ask">Request a ride</button><div class="mu">Only the driver decides. This is a peer-to-peer lift, not a taxi.</div>`)+"</div>"}
+function driveView(){const d=S.drivers[uid],o=S.offers[uid];
+ if(!d)return `<div class="c"><h2>Register as a driver</h2><label>Plate</label><input id="dp"><label>Vehicle (make, colour)</label><input id="dv"><label>Seats for passengers</label><input id="ds" type="number" min="1" max="6" value="3"><label>Licence photo (private; for admin review)</label><input id="dl" type="file" accept="image/*"><label>Vehicle photo</label><input id="dc" type="file" accept="image/*"><label>Selfie</label><input id="dsf" type="file" accept="image/*"><label>Social link (optional)</label><input id="dso"><button class="p" id="dreg">Register vehicle</button><div class="mu">Photos are uploaded to private storage. Uploading does not mean a driver has been verified.</div></div>`;
+ if(!o||o.status==="done")return `<div class="c"><h2>Where are you going?</h2><label>From</label><select id="of">${Object.keys(N).map(k=>`<option value="${k}">${N[k][0]}</option>`).join("")}</select><label>To</label><select id="ot">${Object.keys(N).map((k,i,a)=>`<option value="${k}" ${k==="CB"?"selected":""}>${N[k][0]}</option>`).join("")}</select><button class="p" id="go">Go available</button><div class="mu">Everyone can see your route. You can take several riders until the car is full.</div></div>`;
+ const nxt=o.path[Math.min((o.idx|0)+1,o.path.length-1)],left=dist(o.path.slice(o.idx|0));
+ return `<div class="gm">${slot(o)}<div class="panel"><h2>${o.status==="driving"?"Navigating":"Available"}: ${N[o.path[0]][0]} → ${N[o.path.at(-1)][0]}</h2><div class="mu">${o.taken}/${o.seats} seats taken · ${left.toFixed(1)} km left · about ${Math.round(left/50*60)} min at 50 km/h</div><div class="card"><b>Turn-by-turn</b>${(RC[pk(o)]&&RC[pk(o)].steps)?RC[pk(o)].steps.map(x=>`<div>${esc(x.t)} — ${esc(x.d)}</div>`).join(""):o.path.slice(o.idx|0).map((k,i,a)=>i<a.length-1?`<div>${i?"Then":"Head"} to ${N[a[i+1]][0]} — ${km(k,a[i+1]).toFixed(1)} km</div>`:"<div>Arrive at "+N[k][0]+"</div>").join("")}</div><div class="row">${o.status==="available"?'<button class="p" id="start">Start driving (simulated GPS)</button>':""}<button id="stopo">End / go offline</button></div></div></div>`}
+function reqView(){const L=Object.entries(S.requests);const mine=L.filter(([,r])=>r.offer===uid&&["pending","accepted"].includes(r.status)),out=L.filter(([,r])=>r.rider===uid&&["pending","accepted"].includes(r.status));
+ let h='<div class="c"><h2>Requests to you (driver)</h2>';h+=mine.length?mine.map(([id,r])=>`<div class="card"><b>${esc(r.rname)}</b> <span class="tag">${esc(r.rver||"ID not verified")}</span> <span class="mu">${esc(r.rgender)}, ${esc(r.rage)} · ${N[r.from][0]} → ${N[r.to][0]}</span><div class="row">${r.status==="pending"?`<button class="p" data-a="${id}">Accept</button><button data-d="${id}">Decline</button>`:`<span class="tag">on board</span><button data-drop="${id}">Drop off</button>`}</div></div>`).join(""):'<div class="mu">None.</div>';
+ h+='</div><div class="c"><h2>Your rides (rider)</h2>';h+=out.length?out.map(([id,r])=>{const o=S.offers[r.offer];return`<div class="card"><b>${esc(o?.name)}</b> · ${N[r.from][0]} → ${N[r.to][0]} <span class="tag">${r.status}</span><div class="row">${r.status==="accepted"?`<button data-drop="${id}">Leave / I'm here</button>`:`<button data-d="${id}">Cancel</button>`}</div></div>`}).join(""):'<div class="mu">No active rides.</div>';return h+"</div>"}
+function dropView(id){const r=S.requests[id],d=dist(route(r.from,r.to)),g=(d*0.09*2.9).toFixed(2);
+ return `<div class="c"><h2>Dropped off 🎉</h2><div>${N[r.from][0]} → ${N[r.to][0]}, ${d.toFixed(1)} km</div><div class="card">Suggested fuel contribution: <b>$${g}</b><div class="mu">Optional. About 9 L/100 km at $2.90/L. Pay the driver yourself — the app doesn't handle money.</div></div><label>Rate the driver</label><div class="row">${[1,2,3,4,5].map(n=>`<button data-r="${n}">${n}★</button>`).join("")}<button data-r="0">Skip</button></div></div>`}
+function tripsView(){const T=Object.values(S.trips).filter(t=>admin||t.rider===uid||t.driver===uid).sort((a,b)=>b.ts-a.ts);
+ return `<div class="c"><h2>Trip records</h2>${T.length?T.map(t=>`<div class="card">${new Date(t.ts).toLocaleString()} · ${esc(t.from)} → ${esc(t.to)} · ${t.km} km<div class="mu">Driver ${esc(t.dname)} (${esc(t.plate)}) · Rider ${esc(t.rname)}</div></div>`).join(""):'<div class="mu">No trips yet.</div>'}${admin?'<button id="exp">Export all (JSON)</button>':""}<div class="mu">Every trip is recorded for safety. This prototype does not automatically delete records. A retention policy and deletion process must be implemented before public launch.</div></div>`}
+function safeView(){return `<div class="c"><h2>Safety</h2><div>• SOS opens your phone dialler for 111. This prototype does not share a live tracking link.<br>• Check the vehicle and plate before getting in. Private documents are not shown to riders.<br>• Leave the ride whenever you want.<br>• Drivers are rated; every trip is recorded.</div></div><div class="c"><h2>Terms (draft — needs a lawyer)</h2><div class="mu">Hitch a hike connects people already travelling the same way for voluntary peer-to-peer lifts. We are not a taxi, rideshare or transport operator. Drivers are never obliged to accept. Any fuel contribution is optional, limited to running costs and not a fare. We do not guarantee anyone's safety, identity checks or insurance. Normal NZ road rules apply. You must be 18+.</div></div>`}
+function signup(){const up=mode==="up"||uid;return `<div class="c" style="max-width:460px;margin:20px auto"><h2>${uid?"Finish your profile":mode==="up"?"Create your account":"Log in"}</h2><div class="mu">Free, peer-to-peer lifts between Rolleston and Christchurch. 18+ only.</div>${uid?"":'<label>Email</label><input id="em" type="email" autocomplete="email"><label>Password (6+ characters)</label><input id="pw" type="password">'}${up?'<label>Name</label><input id="sn"><label>Date of birth</label><input id="sa" type="date"><label>Gender</label><select id="sg"><option>Female</option><option>Male</option><option>Other</option></select><label style="display:flex;gap:8px;align-items:center;font-size:14px;color:var(--tx)"><input id="sc" type="checkbox" style="width:auto;margin:0"> I confirm I am 18 or older</label><label>ID photo (optional; private upload for admin review)</label><input id="sd" type="file" accept="image/*">':""}<button class="p" id="sgo">${uid?"Save profile":mode==="up"?"Create account":"Log in"}</button>${uid?"":`<button id="tog" style="margin-left:6px">${mode==="up"?"I already have an account":"Create an account"}</button>`}<div class="mu">Your name, age and gender are readable by signed-in users under the current database rules. Your date of birth is not stored. ID photos go to a private folder that only you and the admin can open.</div></div>`}
+function render(){nav();$("#who").textContent=me?me.name:"";$("#out").style.display=uid?"":"none";const m=$("#app");if(!me){$("#nav").innerHTML="";m.className="";m.innerHTML=signup();return}
+ m.className=(tab==="map"||(tab==="drive"&&S.offers[uid]&&S.offers[uid].status!=="done"&&S.drivers[uid]))?"full":"";m.innerHTML=({map:mapView,drive:driveView,req:reqView,trips:tripsView,safe:safeView}[tab])();if(window.dropId&&tab==="req")m.innerHTML=dropView(window.dropId);const sl=m.querySelector(".mslot");if(sl&&G){sl.appendChild(mapEl);gmap.invalidateSize();drawMap(window.hl)}}
+document.addEventListener("click",async e=>{const t=e.target,q=s=>t.closest(s),fn=f=>f.name.replace(/[^\w.]/g,"_");
+ if(t.id==="sos"){location.href="tel:111";try{await navigator.clipboard.writeText("I need help. Trip location: "+(S.offers[uid]?.path[S.offers[uid].idx|0]||"unknown")+" - tracking via Hitch a hike");toast("Trip details copied; this is not live tracking")}catch(x){toast("Calling 111...")}return}
+ if(t.id==="out"){clearInterval(sim);await SB.auth.signOut();return}
+ if(t.id==="tog"){mode=mode==="up"?"in":"up";render();return}
+ if(t.id==="sgo"){
+  if(window.authBusy)return;
+  window.authBusy=true;t.disabled=true;
+  try{
+   if(!SB)throw new Error("Database library unavailable. Check your connection and reload.");
+   const email=$("#em")?$("#em").value.trim():"";
+   const password=$("#pw")?$("#pw").value:"";
+   const creating=!!uid||mode==="up";
+   if(!uid&&(!email||password.length<6))throw new Error("Enter your email and a password of at least 6 characters.");
+   if(!creating){
+    const {data,error}=await SB.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    await onSession(data.session);return;
+   }
+   // Capture the form before authentication can cause the page to render again.
+   const name=$("#sn").value.trim(),dob=$("#sa").value,gender=$("#sg").value;
+   const confirmed=$("#sc").checked,file=$("#sd").files[0];
+   if(!name)throw new Error("Please enter your name.");
+   if(!dob)throw new Error("Please enter your date of birth.");
+   const [y,m,d]=dob.split("-").map(Number),today=new Date();
+   let age=today.getFullYear()-y;
+   if(today.getMonth()+1<m||(today.getMonth()+1===m&&today.getDate()<d))age--;
+   if(!Number.isInteger(age)||age<18||age>120)throw new Error("Enter a valid date of birth. You must be 18 or older.");
+   if(!confirmed)throw new Error("Please confirm that you are 18 or older.");
+   if(file&&(!file.type.startsWith("image/")||file.size>5*1024*1024))throw new Error("Choose an image smaller than 5 MB.");
+   let session;
+   if(!uid){
+    const {data,error}=await SB.auth.signUp({email,password});
+    if(error)throw error;
+    session=data.session;
+    if(!session){
+     mode="in";
+     render();
+     alert("Check your inbox and confirm your email, then return here and log in. After logging in, complete your profile. Your name, date of birth and ID photo have not been saved yet.");
+     return;
+    }
+   }else{
+    const {data,error}=await SB.auth.getSession();if(error)throw error;session=data.session;
+   }
+   if(!session)throw new Error("Please log in again before saving your profile.");
+   const id=session.user.id;
+   const {data:existing,error:readError}=await SB.from("profiles").select("id").eq("id",id).maybeSingle();
+   if(readError)throw readError;
+   if(!existing){
+    const {error}=await SB.from("profiles").insert({id,name,age,gender,id_status:"not_verified"});
+    if(error)throw new Error("Your login account exists, but the profile could not be saved: "+error.message+". Log in again to finish your profile; do not create another account.");
+   }
+   let uploadMessage="";
+   if(file&&!existing){
+    const {error}=await SB.storage.from("verification").upload(id+"/id-"+Date.now()+"-"+fn(file),file);
+    uploadMessage=error?" Profile saved, but ID upload failed: "+error.message:" ID uploaded privately for review. Verification is not automatic.";
+   }
+   uid=id;tab="map";await onSession(session);
+   if(uploadMessage)alert("Profile saved."+uploadMessage);else toast("Profile saved. Welcome!");
+  }catch(error){alert(error.message||"Something went wrong. Please try again.")}
+  finally{window.authBusy=false;if(t.isConnected)t.disabled=false;}
+  return;
+ }
+ if(q("[data-o]")){sel=q("[data-o]").dataset.o;render();return}
+ if(t.id==="ask"){const o=S.offers[sel],f=$("#pf").value,to=$("#pt").value,p=o.path;if(p.indexOf(f)>=p.indexOf(to))return toast("Drop-off must come after pick-up");const{error}=await SB.from("requests").insert({offer_id:o.id,rider_id:uid,from_node:f,to_node:to});if(error)return toast(error.message);toast("Request sent");await loadAll();return}
+ if(t.id==="dreg"){const g=i=>$(i).files[0];if(!$("#dp").value||!$("#dv").value||!g("#dl")||!g("#dc")||!g("#dsf"))return toast("Plate, vehicle, licence, vehicle photo and selfie are required");const{error}=await SB.from("drivers").insert({user_id:uid,vehicle:$("#dv").value,plate:$("#dp").value.toUpperCase(),seats:+$("#ds").value||3,social:$("#dso").value||null});if(error)return toast(error.message);for(const[k,i]of[["licence","#dl"],["vehicle","#dc"],["selfie","#dsf"]]){const{error:ue}=await SB.storage.from("verification").upload(uid+"/"+k+"-"+Date.now()+"-"+fn(g(i)),g(i));if(ue)toast("Upload problem ("+k+"): "+ue.message)}await loadAll();return}
+ if(t.id==="go"){const a=$("#of").value,b=$("#ot").value;if(a===b)return toast("Choose two different places");await SB.from("offers").update({status:"done"}).eq("driver_id",uid).neq("status","done");const{error}=await SB.from("offers").insert({driver_id:uid,path:route(a,b)});if(error)return toast(error.message);await loadAll();return}
+ if(t.id==="start"){await SB.from("offers").update({status:"driving"}).eq("id",S.offers[uid].id);await loadAll();clearInterval(sim);sim=setInterval(async()=>{const o=S.offers[uid];if(!o||o.status!=="driving")return clearInterval(sim);if(o.idx>=o.path.length-1){clearInterval(sim);await SB.from("offers").update({status:"available"}).eq("id",o.id);toast("You have arrived");await loadAll();return}await SB.from("offers").update({idx:o.idx+1}).eq("id",o.id);await loadAll()},3500);return}
+ if(t.id==="stopo"){clearInterval(sim);const o=S.offers[uid];if(o){for(const[id,r]of Object.entries(S.requests)){if(r.offer!==uid)continue;if(r.status==="pending")await SB.from("requests").update({status:"declined"}).eq("id",id);if(r.status==="accepted")await SB.from("requests").update({status:"dropped"}).eq("id",id)}await SB.from("offers").update({status:"done"}).eq("id",o.id)}await loadAll();return}
+ const a=t.dataset.a,d=t.dataset.d,dr=t.dataset.drop,rt=t.dataset.r;
+ if(a){const{error}=await SB.from("requests").update({status:"accepted"}).eq("id",a);if(error)return toast(/full/i.test(error.message)?"Car is full":error.message);await loadAll();return}
+ if(d){const r=S.requests[d];await SB.from("requests").update({status:r.rider===uid?"cancelled":"declined"}).eq("id",d);await loadAll();return}
+ if(dr){const r=S.requests[dr],{error}=await SB.from("requests").update({status:"dropped"}).eq("id",dr);if(error)return toast(error.message);if(r.rider===uid){window.dropId=dr;window.dropDrv=r.offer}await loadAll();return render()}
+ if(rt!==undefined){if(+rt&&window.dropId&&window.dropDrv){const{error}=await SB.from("ratings").insert({request_id:window.dropId,rider_id:uid,driver_id:window.dropDrv,stars:+rt});if(error)toast(error.message)}window.dropId=null;window.dropDrv=null;tab="map";await loadAll();render();return}
+ if(t.id==="exp"){const b=new Blob([JSON.stringify(Object.values(S.trips),null,2)],{type:"application/json"}),l=document.createElement("a");l.href=URL.createObjectURL(b);l.download="hitch-a-hike-trips.json";l.click()}});
+document.addEventListener("change",e=>{if(e.target.id==="fd"){window.dest=e.target.value;render();return}if(e.target.id==="fg"||e.target.id==="fa"){window.af={g:$("#fg").value,a:$("#fa").value};render()}});
+boot();loadMaps();
+</script></body></html>
